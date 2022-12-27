@@ -89,6 +89,10 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  uint8_t initString[] = "\r\n--- Apple Pie Initialization Complete! ---\r\n";
+  HAL_UART_Transmit(&huart1, initString, sizeof(initString), 10);
+
+  int32_t messageCounter = 0;
 
   /* USER CODE END 2 */
 
@@ -96,9 +100,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  uint8_t Test[] = "Apple Pie!\r\n"; //Data to send
-	  HAL_UART_Transmit(&huart1,Test,sizeof(Test),10);// Sending in normal mode
+	  uint8_t messageCounterString[20];
+    uint8_t stringSize = sprintf(messageCounterString, "Apple Pie %i!\r\n", messageCounter);
+	  HAL_UART_Transmit(&huart1, messageCounterString, stringSize, 10);
 	  HAL_Delay(1000);
+    messageCounter++;
+    
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

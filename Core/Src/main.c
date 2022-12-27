@@ -96,7 +96,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  uint8_t Test[] = "Hello World !!!\r\n"; //Data to send
+	  uint8_t Test[] = "Apple Pie!\r\n"; //Data to send
 	  HAL_UART_Transmit(&huart1,Test,sizeof(Test),10);// Sending in normal mode
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */

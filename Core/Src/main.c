@@ -21,17 +21,20 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-//#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery.h"
-//#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h"
+#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery.h"
+#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+extern LTDC_HandleTypeDef hltdc_discovery;
+//static DMA2D_HandleTypeDef hdma2d;
+extern DSI_HandleTypeDef hdsi_discovery;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define LAYER0_ADDRESS  (LCD_FB_START_ADDRESS)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +45,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 DMA2D_HandleTypeDef hdma2d;
+
+DSI_HandleTypeDef hdsi;
 
 LTDC_HandleTypeDef hltdc;
 
@@ -60,8 +65,11 @@ static void MX_USART1_UART_Init(void);
 static void MX_LTDC_Init(void);
 static void MX_DMA2D_Init(void);
 static void MX_FMC_Init(void);
+static void MX_DSIHOST_DSI_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void LCD_Init(void);
+void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address);
+static void Display_DemoDescription(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -101,7 +109,9 @@ int main(void)
   MX_LTDC_Init();
   MX_DMA2D_Init();
   MX_FMC_Init();
+  MX_DSIHOST_DSI_Init();
   /* USER CODE BEGIN 2 */
+  LCD_Init();
   uint8_t initString[] = "\r\n--- Apple Pie Initialization Complete! ---\r\n";
   HAL_UART_Transmit(&huart1, initString, sizeof(initString), 10);
 
@@ -113,8 +123,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	uint8_t messageCounterString[20];
-	uint8_t stringSize = sprintf((char*)messageCounterString, "Apple Pie with BSP %i!\r\n", (int)messageCounter);
+	uint8_t messageCounterString[30];
+	uint8_t stringSize = sprintf((char*)messageCounterString, "Apple pie with BSP %i\r\n", (int)messageCounter);
 	HAL_UART_Transmit(&huart1, messageCounterString, stringSize, 10);
 	HAL_Delay(1000);
 	messageCounter++;
@@ -154,7 +164,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 25;
-  RCC_OscInitStruct.PLL.PLLN = 432;
+  RCC_OscInitStruct.PLL.PLLN = 400;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   RCC_OscInitStruct.PLL.PLLR = 2;
@@ -179,7 +189,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_6) != HAL_OK)
   {
     Error_Handler();
   }
@@ -222,6 +232,113 @@ static void MX_DMA2D_Init(void)
   /* USER CODE BEGIN DMA2D_Init 2 */
 
   /* USER CODE END DMA2D_Init 2 */
+
+}
+
+/**
+  * @brief DSIHOST Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DSIHOST_DSI_Init(void)
+{
+
+  /* USER CODE BEGIN DSIHOST_Init 0 */
+
+  /* USER CODE END DSIHOST_Init 0 */
+
+  DSI_PLLInitTypeDef PLLInit = {0};
+  DSI_HOST_TimeoutTypeDef HostTimeouts = {0};
+  DSI_PHY_TimerTypeDef PhyTimings = {0};
+  DSI_VidCfgTypeDef VidCfg = {0};
+
+  /* USER CODE BEGIN DSIHOST_Init 1 */
+
+  /* USER CODE END DSIHOST_Init 1 */
+  hdsi.Instance = DSI;
+  hdsi.Init.AutomaticClockLaneControl = DSI_AUTO_CLK_LANE_CTRL_DISABLE;
+  hdsi.Init.TXEscapeCkdiv = 4;
+  hdsi.Init.NumberOfLanes = DSI_ONE_DATA_LANE;
+  PLLInit.PLLNDIV = 20;
+  PLLInit.PLLIDF = DSI_PLL_IN_DIV1;
+  PLLInit.PLLODF = DSI_PLL_OUT_DIV1;
+  if (HAL_DSI_Init(&hdsi, &PLLInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  HostTimeouts.TimeoutCkdiv = 1;
+  HostTimeouts.HighSpeedTransmissionTimeout = 0;
+  HostTimeouts.LowPowerReceptionTimeout = 0;
+  HostTimeouts.HighSpeedReadTimeout = 0;
+  HostTimeouts.LowPowerReadTimeout = 0;
+  HostTimeouts.HighSpeedWriteTimeout = 0;
+  HostTimeouts.HighSpeedWritePrespMode = DSI_HS_PM_DISABLE;
+  HostTimeouts.LowPowerWriteTimeout = 0;
+  HostTimeouts.BTATimeout = 0;
+  if (HAL_DSI_ConfigHostTimeouts(&hdsi, &HostTimeouts) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PhyTimings.ClockLaneHS2LPTime = 28;
+  PhyTimings.ClockLaneLP2HSTime = 33;
+  PhyTimings.DataLaneHS2LPTime = 15;
+  PhyTimings.DataLaneLP2HSTime = 25;
+  PhyTimings.DataLaneMaxReadTime = 0;
+  PhyTimings.StopWaitTime = 0;
+  if (HAL_DSI_ConfigPhyTimer(&hdsi, &PhyTimings) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_DSI_ConfigFlowControl(&hdsi, DSI_FLOW_CONTROL_BTA) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_DSI_SetLowPowerRXFilter(&hdsi, 10000) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_DSI_ConfigErrorMonitor(&hdsi, HAL_DSI_ERROR_NONE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  VidCfg.VirtualChannelID = 0;
+  VidCfg.ColorCoding = DSI_RGB888;
+  VidCfg.LooselyPacked = DSI_LOOSELY_PACKED_DISABLE;
+  VidCfg.Mode = DSI_VID_MODE_NB_PULSES;
+  VidCfg.PacketSize = 1;
+  VidCfg.NumberOfChunks = 640;
+  VidCfg.NullPacketSize = 0;
+  VidCfg.HSPolarity = DSI_HSYNC_ACTIVE_LOW;
+  VidCfg.VSPolarity = DSI_VSYNC_ACTIVE_LOW;
+  VidCfg.DEPolarity = DSI_DATA_ENABLE_ACTIVE_HIGH;
+  VidCfg.HorizontalSyncActive = 10;
+  VidCfg.HorizontalBackPorch = 9;
+  VidCfg.HorizontalLine = 861;
+  VidCfg.VerticalSyncActive = 4;
+  VidCfg.VerticalBackPorch = 2;
+  VidCfg.VerticalFrontPorch = 2;
+  VidCfg.VerticalActive = 480;
+  VidCfg.LPCommandEnable = DSI_LP_COMMAND_DISABLE;
+  VidCfg.LPLargestPacketSize = 0;
+  VidCfg.LPVACTLargestPacketSize = 0;
+  VidCfg.LPHorizontalFrontPorchEnable = DSI_LP_HFP_DISABLE;
+  VidCfg.LPHorizontalBackPorchEnable = DSI_LP_HBP_DISABLE;
+  VidCfg.LPVerticalActiveEnable = DSI_LP_VACT_DISABLE;
+  VidCfg.LPVerticalFrontPorchEnable = DSI_LP_VFP_DISABLE;
+  VidCfg.LPVerticalBackPorchEnable = DSI_LP_VBP_DISABLE;
+  VidCfg.LPVerticalSyncActiveEnable = DSI_LP_VSYNC_DISABLE;
+  VidCfg.FrameBTAAcknowledgeEnable = DSI_FBTAA_DISABLE;
+  if (HAL_DSI_ConfigVideoMode(&hdsi, &VidCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_DSI_SetGenericVCID(&hdsi, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DSIHOST_Init 2 */
+
+  /* USER CODE END DSIHOST_Init 2 */
 
 }
 
@@ -773,14 +890,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DSIHOST_TE_Pin */
-  GPIO_InitStruct.Pin = DSIHOST_TE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF13_DSI;
-  HAL_GPIO_Init(DSIHOST_TE_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : ARDUINO_PWM_D6_Pin */
   GPIO_InitStruct.Pin = ARDUINO_PWM_D6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -800,6 +909,90 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void LCD_Init(void)
+{
+  	uint8_t lcdStatus = LCD_OK;
+
+	lcdStatus = BSP_LCD_Init();
+	while(lcdStatus != LCD_OK);
+
+	/* Initialize LTDC layer 0 iused for Hint */
+	LCD_LayertInit(0, LAYER0_ADDRESS);
+	BSP_LCD_SelectLayer(0);
+
+	BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
+
+	BSP_LCD_Clear(LCD_COLOR_WHITE);
+
+	Display_DemoDescription();
+}
+
+/**
+ * @brief  Initializes the LCD layers.
+ * @param  LayerIndex: Layer foreground or background
+ * @param  FB_Address: Layer frame buffer
+ * @retval None
+ */
+void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address)
+{
+	LCD_LayerCfgTypeDef Layercfg;
+
+	/* Layer Init */
+	Layercfg.WindowX0 = 0;
+	Layercfg.WindowX1 = BSP_LCD_GetXSize() / 2;
+	Layercfg.WindowY0 = 0;
+	Layercfg.WindowY1 = BSP_LCD_GetYSize();
+	Layercfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+	Layercfg.FBStartAdress = Address;
+	Layercfg.Alpha = 255;
+	Layercfg.Alpha0 = 0;
+	Layercfg.Backcolor.Blue = 0;
+	Layercfg.Backcolor.Green = 0;
+	Layercfg.Backcolor.Red = 0;
+	Layercfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+	Layercfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+	Layercfg.ImageWidth = BSP_LCD_GetXSize() / 2;
+	Layercfg.ImageHeight = BSP_LCD_GetYSize();
+
+	HAL_LTDC_ConfigLayer(&hltdc_discovery, &Layercfg, LayerIndex);
+}
+
+static void Display_DemoDescription(void)
+{
+
+	// sets lcd foreground layer
+	BSP_LCD_SelectLayer(0);
+
+	// clears the lcd
+	BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
+	BSP_LCD_Clear(LCD_COLOR_WHITE);
+
+	// sets the lcd text color and font
+	BSP_LCD_SetFont(&LCD_DEFAULT_FONT);
+	BSP_LCD_SetTextColor(LCD_COLOR_DARKBLUE);
+
+	// displays header messages
+	// BSP_LCD_DisplayStringAt(0, 10, (uint8_t *)"HOP", CENTER_MODE);
+	// BSP_LCD_DisplayStringAt(0, 35, (uint8_t *)"Versao W26", CENTER_MODE);
+
+	// displays footer
+	BSP_LCD_SetFont(&Font12);
+	BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 20, (uint8_t *)"Copyright (c) STMicroelectronics 2016", CENTER_MODE);
+
+	// // draws logo picture
+	// BSP_LCD_DrawPicture(utfprlogo, UTFPR_LOGO_WIDTH, UTFPR_LOGO_HEIGHT, (WVGA_RES_X / 2) - (UTFPR_LOGO_WIDTH / 2), 80);
+
+	// displays content messages
+	BSP_LCD_SetFont(&Font24);
+	BSP_LCD_SetTextColor(LCD_COLOR_YELLOW);
+	BSP_LCD_FillRect(0, BSP_LCD_GetYSize() / 2 + 15, BSP_LCD_GetXSize(), 90);
+
+	BSP_LCD_SetBackColor(LCD_COLOR_YELLOW);
+	BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+	BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() / 2 + 30, (uint8_t *)"Funcionalidades ativas:", CENTER_MODE);
+	BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() / 2 + 60, (uint8_t *)"Audio USB | LCD | Filtros | Touch Inicial", CENTER_MODE);
+
+}
 
 /* USER CODE END 4 */
 

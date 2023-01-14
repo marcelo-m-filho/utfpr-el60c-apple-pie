@@ -21,16 +21,23 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery.h"
+#include "../../BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h"
+#include "utfprlogo.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+extern LTDC_HandleTypeDef hltdc_discovery;
+//static DMA2D_HandleTypeDef hdma2d;
+extern DSI_HandleTypeDef hdsi_discovery;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define LAYER0_ADDRESS  (LCD_FB_START_ADDRESS)
+#define WVGA_RES_X      800
+#define WVGA_RES_Y      480
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,6 +49,8 @@
 
 UART_HandleTypeDef huart1;
 
+SDRAM_HandleTypeDef hsdram1;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -50,7 +59,13 @@ UART_HandleTypeDef huart1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
+static void LCD_Init(void);
+void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address);
+static void LCD_DisplayInitialScreen(void);
+static void LCD_DrawPicture(const uint8_t* image, uint32_t width, uint32_t height, uint32_t xPosition, uint32_t yPosition );
+static uint8_t LCD_CopyImageToFrameBuffer(void *pSrc, void *pDst, uint32_t xSize, uint32_t ySize, uint16_t x, uint16_t y);
 
 /* USER CODE END PFP */
 
@@ -88,11 +103,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_FMC_Init();
   /* USER CODE BEGIN 2 */
+  LCD_Init();
   uint8_t initString[] = "\r\n--- Apple Pie Initialization Complete! ---\r\n";
   HAL_UART_Transmit(&huart1, initString, sizeof(initString), 10);
 
   int32_t messageCounter = 0;
+	uint8_t messageCounterString[50];
 
   /* USER CODE END 2 */
 
@@ -100,12 +118,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  uint8_t messageCounterString[20];
-    uint8_t stringSize = sprintf(messageCounterString, "Apple Pie %i!\r\n", messageCounter);
-	  HAL_UART_Transmit(&huart1, messageCounterString, stringSize, 10);
-	  HAL_Delay(1000);
-    messageCounter++;
-    
+	uint8_t stringSize = sprintf((char*)messageCounterString, "Apple pie with BSP via Serial (%i)\r\n", (int)messageCounter);
+	HAL_UART_Transmit(&huart1, messageCounterString, stringSize, 10);
+
+  sprintf((char*)messageCounterString, "Apple pie with BSP via LCD (%i)", (int)messageCounter);
+  BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() / 2 + 45 - 12, messageCounterString, CENTER_MODE);
+	HAL_Delay(100);
+	messageCounter++;
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -134,17 +154,15 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 25;
-  RCC_OscInitStruct.PLL.PLLN = 432;
+  RCC_OscInitStruct.PLL.PLLN = 400;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
-  RCC_OscInitStruct.PLL.PLLR = 2;
+  RCC_OscInitStruct.PLL.PLLR = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -166,11 +184,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_6) != HAL_OK)
   {
     Error_Handler();
   }
-  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSE, RCC_MCODIV_1);
 }
 
 /**
@@ -206,6 +224,53 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 2 */
 
+}
+
+/* FMC initialization function */
+static void MX_FMC_Init(void)
+{
+
+  /* USER CODE BEGIN FMC_Init 0 */
+
+  /* USER CODE END FMC_Init 0 */
+
+  FMC_SDRAM_TimingTypeDef SdramTiming = {0};
+
+  /* USER CODE BEGIN FMC_Init 1 */
+
+  /* USER CODE END FMC_Init 1 */
+
+  /** Perform the SDRAM1 memory initialization sequence
+  */
+  hsdram1.Instance = FMC_SDRAM_DEVICE;
+  /* hsdram1.Init */
+  hsdram1.Init.SDBank = FMC_SDRAM_BANK1;
+  hsdram1.Init.ColumnBitsNumber = FMC_SDRAM_COLUMN_BITS_NUM_8;
+  hsdram1.Init.RowBitsNumber = FMC_SDRAM_ROW_BITS_NUM_12;
+  hsdram1.Init.MemoryDataWidth = FMC_SDRAM_MEM_BUS_WIDTH_32;
+  hsdram1.Init.InternalBankNumber = FMC_SDRAM_INTERN_BANKS_NUM_4;
+  hsdram1.Init.CASLatency = FMC_SDRAM_CAS_LATENCY_3;
+  hsdram1.Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
+  hsdram1.Init.SDClockPeriod = FMC_SDRAM_CLOCK_PERIOD_2;
+  hsdram1.Init.ReadBurst = FMC_SDRAM_RBURST_ENABLE;
+  hsdram1.Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_0;
+  /* SdramTiming */
+  SdramTiming.LoadToActiveDelay = 2;
+  SdramTiming.ExitSelfRefreshDelay = 7;
+  SdramTiming.SelfRefreshTime = 4;
+  SdramTiming.RowCycleDelay = 7;
+  SdramTiming.WriteRecoveryTime = 3;
+  SdramTiming.RPDelay = 2;
+  SdramTiming.RCDDelay = 2;
+
+  if (HAL_SDRAM_Init(&hsdram1, &SdramTiming) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* USER CODE BEGIN FMC_Init 2 */
+
+  /* USER CODE END FMC_Init 2 */
 }
 
 /**
@@ -256,18 +321,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : FMC_NBL1_Pin FMC_NBL0_Pin FMC_D5_Pin FMC_D6_Pin
-                           FMC_D8_Pin FMC_D11_Pin FMC_D4_Pin FMC_D7_Pin
-                           FMC_D9_Pin FMC_D12_Pin FMC_D10_Pin */
-  GPIO_InitStruct.Pin = FMC_NBL1_Pin|FMC_NBL0_Pin|FMC_D5_Pin|FMC_D6_Pin
-                          |FMC_D8_Pin|FMC_D11_Pin|FMC_D4_Pin|FMC_D7_Pin
-                          |FMC_D9_Pin|FMC_D12_Pin|FMC_D10_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ARDUINO_SCL_D15_Pin ARDUINO_SDA_D14_Pin */
   GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin|ARDUINO_SDA_D14_Pin;
@@ -335,16 +388,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
   HAL_GPIO_Init(QSPI_NCS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : FMC_SDNCAS_Pin FMC_SDCLK_Pin FMC_A11_Pin FMC_A12_Pin
-                           FMC_A10_Pin FMC_BA1_Pin FMC_BA0_Pin */
-  GPIO_InitStruct.Pin = FMC_SDNCAS_Pin|FMC_SDCLK_Pin|FMC_A11_Pin|FMC_A12_Pin
-                          |FMC_A10_Pin|FMC_BA1_Pin|FMC_BA0_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-
   /*Configure GPIO pins : LD_USER1_Pin DSI_RESET_Pin LD_USER2_Pin */
   GPIO_InitStruct.Pin = LD_USER1_Pin|DSI_RESET_Pin|LD_USER2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -359,16 +402,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOJ, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : FMC_D2_Pin FMC_D3_Pin FMC_D1_Pin FMC_D15_Pin
-                           FMC_D0_Pin FMC_D14_Pin FMC_D13_Pin */
-  GPIO_InitStruct.Pin = FMC_D2_Pin|FMC_D3_Pin|FMC_D1_Pin|FMC_D15_Pin
-                          |FMC_D0_Pin|FMC_D14_Pin|FMC_D13_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DFSDM_DATIN5_Pin */
   GPIO_InitStruct.Pin = DFSDM_DATIN5_Pin;
@@ -398,18 +431,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = NC4_Pin|NC5_Pin|uSD_Detect_Pin|LCD_BL_CTRL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : FMC_NBL2_Pin D27_Pin D26_Pin FMC_NBL3_Pin
-                           D29_Pin D31_Pin D28_Pin D25_Pin
-                           D30_Pin D24_Pin */
-  GPIO_InitStruct.Pin = FMC_NBL2_Pin|D27_Pin|D26_Pin|FMC_NBL3_Pin
-                          |D29_Pin|D31_Pin|D28_Pin|D25_Pin
-                          |D30_Pin|D24_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
   HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
 
   /*Configure GPIO pins : NC3_Pin NC2_Pin NC1_Pin NC8_Pin
@@ -458,18 +479,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(SPI2_NSS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : FMC_A0_Pin FMC_A1_Pin FMC_A2_Pin FMC_A3_Pin
-                           FMC_A4_Pin FMC_A5_Pin FMC_A6_Pin FMC_A9_Pin
-                           FMC_A7_Pin FMC_A8_Pin FMC_SDNRAS_Pin */
-  GPIO_InitStruct.Pin = FMC_A0_Pin|FMC_A1_Pin|FMC_A2_Pin|FMC_A3_Pin
-                          |FMC_A4_Pin|FMC_A5_Pin|FMC_A6_Pin|FMC_A9_Pin
-                          |FMC_A7_Pin|FMC_A8_Pin|FMC_SDNRAS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
-
   /*Configure GPIO pin : WIFI_TX_Pin */
   GPIO_InitStruct.Pin = WIFI_TX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -477,18 +486,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF8_UART5;
   HAL_GPIO_Init(WIFI_TX_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : D23_Pin D21_Pin D22_Pin FMC_SDNME_Pin
-                           FMC_SDNE0_Pin FMC_SDCKE0_Pin D20_Pin FMC_D_7_Pin
-                           FMC_D19_Pin FMC_D16_Pin FMC_D18_Pin */
-  GPIO_InitStruct.Pin = D23_Pin|D21_Pin|D22_Pin|FMC_SDNME_Pin
-                          |FMC_SDNE0_Pin|FMC_SDCKE0_Pin|D20_Pin|FMC_D_7_Pin
-                          |FMC_D19_Pin|FMC_D16_Pin|FMC_D18_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
-  HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ULPI_DIR_Pin */
   GPIO_InitStruct.Pin = ULPI_DIR_Pin;
@@ -660,14 +657,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DSIHOST_TE_Pin */
-  GPIO_InitStruct.Pin = DSIHOST_TE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF13_DSI;
-  HAL_GPIO_Init(DSIHOST_TE_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : ARDUINO_PWM_D6_Pin */
   GPIO_InitStruct.Pin = ARDUINO_PWM_D6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -687,6 +676,148 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void LCD_Init(void)
+{
+  uint8_t lcdStatus = LCD_OK;
+
+	lcdStatus = BSP_LCD_Init();
+	while(lcdStatus != LCD_OK);
+
+	/* Initialize LTDC layer 0 iused for Hint */
+	LCD_LayertInit(0, LAYER0_ADDRESS);
+	BSP_LCD_SelectLayer(0);
+
+	BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
+
+  BSP_LCD_DisplayOn();
+	BSP_LCD_Clear(LCD_COLOR_WHITE);
+
+	LCD_DisplayInitialScreen();
+}
+
+/**
+ * @brief  Initializes the LCD layers.
+ * @param  LayerIndex: Layer foreground or background
+ * @param  FB_Address: Layer frame buffer
+ * @retval None
+ */
+void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address)
+{
+	LCD_LayerCfgTypeDef Layercfg;
+
+	/* Layer Init */
+	Layercfg.WindowX0 = 0;
+	Layercfg.WindowX1 = BSP_LCD_GetXSize() / 2;
+	Layercfg.WindowY0 = 0;
+	Layercfg.WindowY1 = BSP_LCD_GetYSize();
+	Layercfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+	Layercfg.FBStartAdress = Address;
+	Layercfg.Alpha = 255;
+	Layercfg.Alpha0 = 0;
+	Layercfg.Backcolor.Blue = 0;
+	Layercfg.Backcolor.Green = 0;
+	Layercfg.Backcolor.Red = 0;
+	Layercfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+	Layercfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+	Layercfg.ImageWidth = BSP_LCD_GetXSize() / 2;
+	Layercfg.ImageHeight = BSP_LCD_GetYSize();
+
+	HAL_LTDC_ConfigLayer(&hltdc_discovery, &Layercfg, LayerIndex);
+}
+
+static void LCD_DisplayInitialScreen(void)
+{
+
+	// sets lcd foreground layer
+	BSP_LCD_SelectLayer(0);
+
+	// clears the lcd
+	BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
+	BSP_LCD_Clear(LCD_COLOR_WHITE);
+
+	// sets the lcd text color and font
+	BSP_LCD_SetFont(&LCD_DEFAULT_FONT);
+	BSP_LCD_SetTextColor(LCD_COLOR_DARKBLUE);
+
+	// displays header messages
+	// BSP_LCD_DisplayStringAt(0, 10, (uint8_t *)"HOP", CENTER_MODE);
+	// BSP_LCD_DisplayStringAt(0, 35, (uint8_t *)"Versao W26", CENTER_MODE);
+
+	// displays footer
+	BSP_LCD_SetFont(&Font12);
+	BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 20, (uint8_t *)"Apple Pie - commit 0fe345ce", CENTER_MODE);
+
+	// // draws logo picture
+	LCD_DrawPicture(utfprlogo, UTFPR_LOGO_WIDTH, UTFPR_LOGO_HEIGHT, (WVGA_RES_X / 2) - (UTFPR_LOGO_WIDTH / 2), 80);
+
+	// displays content messages
+	BSP_LCD_SetFont(&Font24);
+	BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+	BSP_LCD_FillRect(0, BSP_LCD_GetYSize() / 2, BSP_LCD_GetXSize(), 90);
+
+	BSP_LCD_SetBackColor(LCD_COLOR_BLACK);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+}
+
+/**
+ * @brief  Copy and convert image (LAYER_SIZE_X, LAYER_SIZE_Y) of format RGB565
+ * to LCD frame buffer area centered in WVGA resolution.
+ * The area of copy is of size (LAYER_SIZE_X, LAYER_SIZE_Y) in ARGB8888.
+ */
+static uint8_t LCD_CopyImageToFrameBuffer(void *pSrc, void *pDst, uint32_t xSize, uint32_t ySize, uint16_t x, uint16_t y)
+{
+
+	uint32_t destination = (uint32_t)pDst + (y * 800 + x) * 4;
+	DMA2D_HandleTypeDef hdma2d_discovery;
+	HAL_StatusTypeDef hal_status = HAL_OK;
+	uint8_t lcd_status = LCD_ERROR;
+
+	/* Configure the DMA2D Mode, Color Mode and output offset */
+	hdma2d_discovery.Init.Mode         = DMA2D_M2M_PFC;
+	hdma2d_discovery.Init.ColorMode    = DMA2D_OUTPUT_ARGB8888;/* Output color out of PFC */
+	hdma2d_discovery.Init.AlphaInverted = DMA2D_REGULAR_ALPHA; /* No Output Alpha Inversion*/
+	hdma2d_discovery.Init.RedBlueSwap   = DMA2D_RB_REGULAR;/* No Output Red & Blue swap */
+
+	/* Output offset in pixels == nb of pixels to be added at end of line to come to the  */
+	/* first pixel of the next line : on the output side of the DMA2D computation         */
+	// TODO: GENERALIZE
+	hdma2d_discovery.Init.OutputOffset = (WVGA_RES_X - UTFPR_LOGO_WIDTH);
+
+	/* Foreground Configuration */
+	hdma2d_discovery.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+	hdma2d_discovery.LayerCfg[1].InputAlpha = 0xFF; /* fully opaque */
+	hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB565;
+	hdma2d_discovery.LayerCfg[1].InputOffset = 0;
+	hdma2d_discovery.LayerCfg[1].RedBlueSwap = DMA2D_RB_REGULAR; /* No ForeGround Red/Blue swap */
+	hdma2d_discovery.LayerCfg[1].AlphaInverted = DMA2D_REGULAR_ALPHA; /* No ForeGround Alpha inversion */
+
+	hdma2d_discovery.Instance = DMA2D;
+
+	/* DMA2D Initialization */
+	if(HAL_DMA2D_Init(&hdma2d_discovery) == HAL_OK)
+	{
+		if(HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1) == HAL_OK)
+		{
+			if (HAL_DMA2D_Start(&hdma2d_discovery, (uint32_t)pSrc, destination, xSize, ySize) == HAL_OK)
+			{
+				/* Polling For DMA transfer */
+				hal_status = HAL_DMA2D_PollForTransfer(&hdma2d_discovery, 10);
+				if(hal_status == HAL_OK)
+				{
+					/* return good status on exit */
+					lcd_status = LCD_OK;
+				}
+			}
+		}
+	}
+
+	return(lcd_status);
+}
+
+static void LCD_DrawPicture(const uint8_t* image, uint32_t width, uint32_t height, uint32_t xPosition, uint32_t yPosition )
+{
+	LCD_CopyImageToFrameBuffer((void*)image, (void*)(LCD_FRAME_BUFFER), width, height, xPosition, yPosition);
+}
 
 /* USER CODE END 4 */
 

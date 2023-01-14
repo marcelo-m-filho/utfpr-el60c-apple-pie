@@ -366,7 +366,7 @@ void Error_Handler(void);
 #define ARDUINO_MOSI_PWM_D11_Pin GPIO_PIN_15
 #define ARDUINO_MOSI_PWM_D11_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+#define LCD_FRAME_BUFFER  0xC0000000
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -104,6 +105,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_FMC_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   LCD_Init();
   uint8_t initString[] = "\r\n--- Apple Pie Initialization Complete! ---\r\n";
@@ -330,16 +332,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ULPI_D7_Pin ULPI_D6_Pin ULPI_D5_Pin ULPI_D3_Pin
-                           ULPI_D2_Pin ULPI_D1_Pin ULPI_D4_Pin */
-  GPIO_InitStruct.Pin = ULPI_D7_Pin|ULPI_D6_Pin|ULPI_D5_Pin|ULPI_D3_Pin
-                          |ULPI_D2_Pin|ULPI_D1_Pin|ULPI_D4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
   /*Configure GPIO pins : uSD_D3_Pin uSD_D2_Pin */
   GPIO_InitStruct.Pin = uSD_D3_Pin|uSD_D2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -487,14 +479,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF8_UART5;
   HAL_GPIO_Init(WIFI_TX_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ULPI_DIR_Pin */
-  GPIO_InitStruct.Pin = ULPI_DIR_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init(ULPI_DIR_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : CEC_CLK_Pin */
   GPIO_InitStruct.Pin = CEC_CLK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -524,14 +508,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ULPI_NXT_Pin */
-  GPIO_InitStruct.Pin = ULPI_NXT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init(ULPI_NXT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SAI1_MCLKA_Pin */
   GPIO_InitStruct.Pin = SAI1_MCLKA_Pin;
@@ -568,14 +544,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ULPI_STP_Pin */
-  GPIO_InitStruct.Pin = ULPI_STP_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init(ULPI_STP_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RMII_MDC_Pin RMII_RXD0_Pin RMII_RXD1_Pin */
   GPIO_InitStruct.Pin = RMII_MDC_Pin|RMII_RXD0_Pin|RMII_RXD1_Pin;
@@ -648,14 +616,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
-  GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ARDUINO_PWM_D6_Pin */
   GPIO_InitStruct.Pin = ARDUINO_PWM_D6_Pin;

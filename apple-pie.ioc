@@ -1,4 +1,7 @@
 #MicroXplorer Configuration settings - do not modify
+CAD.formats=
+CAD.pinconfig=
+CAD.provider=
 DMA2D.IPParameters=Mode,InputAlphaForeground,InputColorModeForeground
 DMA2D.InputAlphaForeground=0xFF
 DMA2D.InputColorModeForeground=DMA2D_INPUT_RGB565
@@ -245,8 +248,8 @@ Mcu.PinsNb=168
 Mcu.ThirdPartyNb=0
 Mcu.UserConstants=
 Mcu.UserName=STM32F769NIHx
-MxCube.Version=6.6.1
-MxDb.Version=DB.6.0.60
+MxCube.Version=6.7.0
+MxDb.Version=DB.6.0.70
 NVIC.BusFault_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false
 NVIC.DebugMonitor_IRQn=true\:0\:0\:false\:false\:true\:false\:false\:false
 NVIC.ForceEnableDMAVector=true

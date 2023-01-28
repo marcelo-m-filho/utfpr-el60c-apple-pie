@@ -52,6 +52,7 @@ UART_HandleTypeDef huart1;
 SDRAM_HandleTypeDef hsdram1;
 
 /* USER CODE BEGIN PV */
+USBD_HandleTypeDef USBD_Device;
 
 /* USER CODE END PV */
 
@@ -62,6 +63,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
 static void LCD_Init(void);
+static void USB_Init(void);
 void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address);
 static void LCD_DisplayInitialScreen(void);
 static void LCD_DrawPicture(const uint8_t* image, uint32_t width, uint32_t height, uint32_t xPosition, uint32_t yPosition );
@@ -106,6 +108,7 @@ int main(void)
   MX_FMC_Init();
   /* USER CODE BEGIN 2 */
   LCD_Init();
+  USB_Init();
   uint8_t initString[] = "\r\n--- Apple Pie Initialization Complete! ---\r\n";
   HAL_UART_Transmit(&huart1, initString, sizeof(initString), 10);
 
@@ -695,6 +698,22 @@ static void LCD_Init(void)
 	LCD_DisplayInitialScreen();
 }
 
+static void USB_Init(void)
+{
+
+	USBD_Init(&USBD_Device, &AUDIO_Desc, 0);
+	/* Add Supported Class */
+	// USBD_RegisterClass(&USBD_Device, USBD_AUDIO_CLASS);
+
+
+	/* Add Interface callbacks for AUDIO Class */
+	// USBD_AUDIO_RegisterInterface(&USBD_Device, &audio_class_interface);
+
+	/* Start Device Process */
+	USBD_Start(&USBD_Device);
+
+}
+
 /**
  * @brief  Initializes the LCD layers.
  * @param  LayerIndex: Layer foreground or background
@@ -705,7 +724,7 @@ void LCD_LayertInit(uint16_t LayerIndex, uint32_t Address)
 {
 	LCD_LayerCfgTypeDef Layercfg;
 
-	/* Layer Init */
+	// layer init
 	Layercfg.WindowX0 = 0;
 	Layercfg.WindowX1 = BSP_LCD_GetXSize() / 2;
 	Layercfg.WindowY0 = 0;

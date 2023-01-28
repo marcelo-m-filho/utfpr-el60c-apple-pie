@@ -6,5 +6,13 @@
         "activityBar.background": "#451717",
         "titleBar.activeBackground": "#640f0f",
         "titleBar.activeForeground": "#FCF9F7"
+    },
+    "files.associations": {
+        "usbd_desc.h": "c",
+        "usbd_def.h": "c",
+        "usbd_conf.h": "c",
+        "usb_audio.h": "c",
+        "usb_audio_constants.h": "c",
+        "stm32f7xx_hal.h": "c"
     }
 }

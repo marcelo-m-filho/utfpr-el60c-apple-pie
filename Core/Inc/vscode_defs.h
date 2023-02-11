@@ -4,4 +4,9 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef char int8_t;
+#undef __cplusplus
 #define __align(x)
+
+#ifndef __weak
+#define __weak __attribute__((weak))
+#endif /* __weak */

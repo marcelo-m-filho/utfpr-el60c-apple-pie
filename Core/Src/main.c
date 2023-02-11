@@ -110,7 +110,7 @@ int main(void)
   HAL_UART_Transmit(&huart1, initString, sizeof(initString), 10);
 
   int32_t messageCounter = 0;
-	uint8_t messageCounterString[50];
+	uint8_t messageCounterString[100];
 
   /* USER CODE END 2 */
 
@@ -118,10 +118,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	uint8_t stringSize = sprintf((char*)messageCounterString, "Apple pie with BSP via Serial (%i)\r\n", (int)messageCounter);
+	uint8_t stringSize = sprintf((char*)messageCounterString, "Apple pie [usb-wrapper] with BSP via Serial (%i)\r\n", (int)messageCounter);
 	HAL_UART_Transmit(&huart1, messageCounterString, stringSize, 10);
 
-  sprintf((char*)messageCounterString, "Apple pie with BSP via LCD (%i)", (int)messageCounter);
+  sprintf((char*)messageCounterString, "Apple pie [usb-wrapper] with BSP via LCD (%i)", (int)messageCounter);
   BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() / 2 + 45 - 12, messageCounterString, CENTER_MODE);
 	HAL_Delay(100);
 	messageCounter++;

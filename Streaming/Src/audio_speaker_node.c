@@ -98,7 +98,7 @@ static AUDIO_SpeakerNode_t *AUDIO_SpeakerHandler = 0;
   * @param  node_handle [in]:       speaker node handle must be allocated
   * @retval 0 if no error
   */
-int8_t  AUDIO_SpeakerInit(AUDIO_Description_t* audio_description, AUDIO_Session_t* session_handle, uint32_t node_handle)
+int8_t AUDIO_SpeakerInit(AUDIO_Description_t* audio_description, AUDIO_Session_t* session_handle, uint32_t node_handle)
 {
   AUDIO_SpeakerNode_t* speaker;
   

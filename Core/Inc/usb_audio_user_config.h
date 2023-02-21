@@ -14,10 +14,10 @@
 #include <stdint.h>
 #include "usb_audio_constants.h"
 
-#define  USE_USB_AUDIO_CLASS_10 1
+#define  USE_USB_AUDIO_CLASS_10               1
 
 // define synchronization method 
-#define USE_AUDIO_PLAYBACK_USB_FEEDBACK 1
+#define USE_AUDIO_PLAYBACK_USB_FEEDBACK       1
 
 // definition of channel count and space mapping of channels 
 #define USB_AUDIO_CONFIG_PLAY_CHANNEL_COUNT   0x02 // stereo audio  

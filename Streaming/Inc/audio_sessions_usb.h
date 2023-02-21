@@ -31,7 +31,7 @@
 #endif // USE_AUDIO_USB_INTERRUPT
 
 // may be instantiated as recording session or playback session
-typedef struct    AUDIO_USBSession
+typedef struct AUDIO_USBSession
 {
   AUDIO_Session_t         session; // the session structure
   int8_t                  (*SessionDeInit) (uint32_t /*session handle*/);
@@ -44,7 +44,7 @@ typedef struct    AUDIO_USBSession
 }
 AUDIO_USBSession_t;
 
- int8_t  AUDIO_PlaybackSessionInit(USBD_AUDIO_AS_InterfaceTypeDef* as_desc, USBD_AUDIO_ControlTypeDef* controls_desc, uint8_t* control_count, uint32_t session_handle);
+ int8_t  AUDIO_PlaybackSessionInit(USBD_AUDIO_Streaming_interface_t* as_desc, USBD_AUDIO_Control_t* controls_desc, uint8_t* control_count, uint32_t session_handle);
 
 
 #endif // __AUDIO_SESSIONS_USB_H

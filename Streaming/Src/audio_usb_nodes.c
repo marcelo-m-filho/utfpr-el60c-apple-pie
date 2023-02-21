@@ -16,11 +16,11 @@
   #if (defined USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES)||(defined USE_AUDIO_USB_RECORD_MULTI_FREQUENCIES)
     #if USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES
       #define USE_AUDIO_USB_MULTI_FREQUENCIES 1
-    #else /* USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES */
+    #else // USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES 
       #error "USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES must be defined to support multi-frequencies"
-    #endif /* USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES */
-  #endif /*(defined USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES)||(defined USE_AUDIO_USB_RECORD_MULTI_FREQUENCIES) */
-#endif /* USE_USB_AUDIO_CLASS_10 */
+    #endif // USBD_SUPPORT_AUDIO_MULTI_FREQUENCIES 
+  #endif //(defined USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES)||(defined USE_AUDIO_USB_RECORD_MULTI_FREQUENCIES) 
+#endif // USE_USB_AUDIO_CLASS_10 
 
 #define DEBUG_USB_NODES  0 // set to 1  to debug USB input for playback
 #if DEBUG_USB_NODES
@@ -45,7 +45,7 @@ static int8_t     USB_AudioStreamingInputOutputStop( uint32_t node_handle);
 static uint16_t   USB_AudioStreamingInputOutputGetMaxPacketLength(uint32_t node_handle);
 #if USE_USB_AUDIO_CLASS_10
   static int8_t   USB_AudioStreamingInputOutputGetState(uint32_t node_handle);
-#endif /*USE_USB_AUDIO_CLASS_10*/
+#endif //USE_USB_AUDIO_CLASS_10
 static int8_t     USB_AudioStreamingInputOutputRestart( uint32_t node_handle);
 static int8_t     USB_AudioStreamingInputDataReceived( uint16_t data_len,uint32_t node_handle);
 static uint8_t*   USB_AudioStreamingInputGetBuffer(uint32_t node_handle, uint16_t* max_packet_length);
@@ -64,7 +64,7 @@ static int8_t     USB_AudioStreamingFeatureUnitGetCurVolume(uint16_t channel, ui
     static int8_t  USB_AudioStreamingInputOutputGetCurFrequency(uint32_t* freq, uint32_t node_handle);
     static int8_t  USB_AudioStreamingInputOutputSetCurFrequency(uint32_t freq,uint8_t*  usb_ep_restart_is_required , uint32_t node_handle);
     static uint32_t  USB_AudioStreamingGetNearestFrequency(uint32_t freq,  uint32_t* freq_table, int freq_count);
-  #endif /*USE_AUDIO_USB_MULTI_FREQUENCIES*/
+  #endif //USE_AUDIO_USB_MULTI_FREQUENCIES
 
   // private variables
   #ifdef USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES
@@ -73,31 +73,78 @@ static int8_t     USB_AudioStreamingFeatureUnitGetCurVolume(uint16_t channel, ui
     {
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_192_K
       USB_AUDIO_CONFIG_FREQ_192_K,
-      #endif /* USB_AUDIO_CONFIG_PLAY_USE_FREQ_192_K */
+      #endif // USB_AUDIO_CONFIG_PLAY_USE_FREQ_192_K 
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_96_K
       USB_AUDIO_CONFIG_FREQ_96_K,
-      #endif /* USB_AUDIO_CONFIG_PLAY_USE_FREQ_96_K */
+      #endif // USB_AUDIO_CONFIG_PLAY_USE_FREQ_96_K 
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_48_K
       USB_AUDIO_CONFIG_FREQ_48_K,
-      #endif /*USB_AUDIO_CONFIG_PLAY_USE_FREQ_48_K*/
+      #endif //USB_AUDIO_CONFIG_PLAY_USE_FREQ_48_K
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_44_1_K
       USB_AUDIO_CONFIG_FREQ_44_1_K,
-      #endif /*USB_AUDIO_CONFIG_PLAY_USE_FREQ_44_1_K*/
+      #endif //USB_AUDIO_CONFIG_PLAY_USE_FREQ_44_1_K
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_16_K
       USB_AUDIO_CONFIG_FREQ_16_K,
-      #endif /*USB_AUDIO_CONFIG_PLAY_USE_FREQ_16_K*/
+      #endif //USB_AUDIO_CONFIG_PLAY_USE_FREQ_16_K
       #if USB_AUDIO_CONFIG_PLAY_USE_FREQ_8_K
       USB_AUDIO_CONFIG_FREQ_8_K,
-      #endif /*USB_AUDIO_CONFIG_PLAY_USE_FREQ_8_K*/
+      #endif //USB_AUDIO_CONFIG_PLAY_USE_FREQ_8_K
     };
-  #endif /* USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES*/
-#endif /* USE_USB_AUDIO_CLASS_10 */
+  #endif // USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES
+#endif // USE_USB_AUDIO_CLASS_10 
 
 #if DEBUG_USB_NODES
   static AUDIO_USBInputBufferDebugStats_t stats_buffer [USB_INPUT_NODE_DEBUG_BUFFER_SIZE];
   static int                              stats_count=0;
   extern __IO uint32_t                    uwTick;
-#endif /* DEBUG_USB_NODES */
+#endif // DEBUG_USB_NODES 
+
+int8_t USB_AudioStreamingInputInit(USBD_AUDIO_EP_Data_t* data_ep, AUDIO_Description_t* audio_desc, AUDIO_Session_t* session_handle, uint32_t node_handle)
+{
+  AUDIO_USBInputOutputNode_t* input_node;
+  
+  input_node                          = (AUDIO_USBInputOutputNode_t*) node_handle;
+  input_node->node.audio_description  = audio_desc;
+  input_node->node.session_handle     = session_handle;
+  input_node->flags                   = 0;
+  input_node->node.state              = AUDIO_NODE_INITIALIZED;
+  input_node->node.type               = AUDIO_INPUT;
+
+  // sets the node callback wich are called by session
+  input_node->IODeInit                = USB_AudioStreamingInputOutputDeInit;
+  input_node->IOStart                 = USB_AudioStreamingInputOutputStart;
+  input_node->IORestart               = USB_AudioStreamingInputOutputRestart;
+  input_node->IOStop                  = USB_AudioStreamingInputOutputStop;
+  input_node->packet_length           = AUDIO_USB_PACKET_SIZE_FROM_AUD_DESC(audio_desc);
+
+  // computes the max packet length
+  #if USE_AUDIO_PLAYBACK_USB_FEEDBACK
+    input_node->max_packet_length     = AUDIO_MAX_PACKET_WITH_FEEDBACK_LENGTH(audio_desc);
+  #else
+    input_node->max_packet_length     = AUDIO_USB_MAX_PACKET_SIZE_FROM_AUD_DESC(audio_desc);
+  #endif // USE_AUDIO_PLAYBACK_USB_FEEDBACK 
+
+  // set data end point callbacks to be called by USB class 
+  data_ep->ep_num                 = USBD_AUDIO_CONFIG_PLAY_EP_OUT;
+  data_ep->control_name_map       = 0;
+  data_ep->control_selector_map   = 0;
+  data_ep->private_data           = node_handle;
+  data_ep->DataReceived           = USB_AudioStreamingInputDataReceived;
+  data_ep->GetBuffer              = USB_AudioStreamingInputGetBuffer;
+  data_ep->GetMaxPacketLength     = USB_AudioStreamingInputOutputGetMaxPacketLength;
+  #if USE_USB_AUDIO_CLASS_10
+    data_ep->GetState             = USB_AudioStreamingInputOutputGetState;
+    #ifdef USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES
+      data_ep->control_selector_map = USBD_AUDIO_CONTROL_EP_SAMPL_FREQ;
+      data_ep->control_cbk.GetCurFrequency = USB_AudioStreamingInputOutputGetCurFrequency;
+      data_ep->control_cbk.SetCurFrequency = USB_AudioStreamingInputOutputSetCurFrequency;
+      data_ep->control_cbk.MaxFrequency = USB_AUDIO_CONFIG_PLAY_FREQENCIES[0];
+      data_ep->control_cbk.MinFrequency = USB_AUDIO_CONFIG_PLAY_FREQENCIES[USB_AUDIO_CONFIG_PLAY_FREQ_COUNT-1];
+      data_ep->control_cbk.ResFrequency = 1; 
+    #endif // USE_AUDIO_USB_PLAY_MULTI_FREQUENCIES 
+  #endif // USE_USB_AUDIO_CLASS_10 
+  return 0;
+}
 
 /**
   * @brief  De-Initializes the AUDIO usb input node
@@ -134,7 +181,7 @@ static int8_t USB_AudioStreamingInputOutputRestart( uint32_t node_handle)
   io_node = (AUDIO_USBInputOutputNode_t *)node_handle;
   if(io_node->node.state == AUDIO_NODE_STARTED)
   {
-    io_node->flags = AUDIO_IO_RESTART_REQUIRED;   /* this flag to stop node when next time USB Audio class calls the node via callback*/
+    io_node->flags = AUDIO_IO_RESTART_REQUIRED;   // this flag to stop node when next time USB Audio class calls the node via callback
     return 0;
   }
   return 0;
@@ -158,7 +205,7 @@ static int8_t USB_AudioStreamingInputDataReceived(uint16_t data_len, uint32_t no
 
    if(input_node->node.state == AUDIO_NODE_STARTED)
    {
-      /* @TODO add overrun detection */
+      // @TODO add overrun detection 
       if(input_node->flags & AUDIO_IO_RESTART_REQUIRED)
       {
         // when restart is required, ignore the packet and reset buffer
@@ -174,19 +221,19 @@ static int8_t USB_AudioStreamingInputDataReceived(uint16_t data_len, uint32_t no
       buf->wr_ptr += data_len; // increments buffer
 
      if((input_node->flags & AUDIO_IO_BEGIN_OF_STREAM) == 0)
-     { /* this is the first packet */
-       input_node->node.session_handle->SessionCallback(AUDIO_BEGIN_OF_STREAM, (AUDIO_Node_t*)input_node, input_node->node.session_handle);   /* send event to mother session */
+     { // this is the first packet 
+       input_node->node.session_handle->SessionCallback(AUDIO_BEGIN_OF_STREAM, (AUDIO_Node_t*)input_node, input_node->node.session_handle);   // send event to mother session 
        input_node->flags |= AUDIO_IO_BEGIN_OF_STREAM;
      }
      else
-     {   /* if some sample are in the margin area , then copy them to regular area */
+     {   // if some sample are in the margin area , then copy them to regular area 
         if(buf->wr_ptr > buf->size)
         {
           buf->wr_ptr -= buf->size;
           memcpy(buf->data, buf->data + buf->size, buf->wr_ptr);
         }
 
-      /* count pending audio samples in the buffer */
+      // count pending audio samples in the buffer 
       buffer_data_count = AUDIO_BUFFER_FILLED_SIZE(buf); 
       if(buf->wr_ptr == buf->size)
       {
@@ -236,11 +283,11 @@ static uint8_t* USB_AudioStreamingInputGetBuffer(uint32_t node_handle, uint16_t*
     {
       stats_count=0;
     }
-  #endif /*DEBUG_USB_NODES*/
+  #endif //DEBUG_USB_NODES
   *max_packet_length = input_node->max_packet_length;
   if( input_node->node.state == AUDIO_NODE_STARTED)
   {
-    /* control of possible overflow */
+    // control of possible overflow 
     buffer_free_size  = AUDIO_BUFFER_FREE_SIZE(input_node->buf);
     
     if(buffer_free_size < input_node->max_packet_length)
@@ -283,7 +330,7 @@ static uint16_t  USB_AudioStreamingInputOutputGetMaxPacketLength(uint32_t node_h
   {
     return 0;
   }
-#endif /* USE_USB_AUDIO_CLASS_10 */
+#endif // USE_USB_AUDIO_CLASS_10 
 
 /**
   * @brief  USB_AudioStreamingFeatureUnitInit
@@ -295,7 +342,7 @@ static uint16_t  USB_AudioStreamingInputOutputGetMaxPacketLength(uint32_t node_h
   * @param  node_handle(IN):                the node handle, node must be allocated
   * @retval  0 for no error
   */
- int8_t USB_AudioStreamingFeatureUnitInit(USBD_AUDIO_ControlTypeDef* usb_control_feature, AUDIO_USBFeatureUnitDefaults_t* audio_defaults, uint8_t unit_id, uint32_t node_handle)
+ int8_t USB_AudioStreamingFeatureUnitInit(USBD_AUDIO_Control_t* usb_control_feature, AUDIO_USBFeatureUnitDefaults_t* audio_defaults, uint8_t unit_id, uint32_t node_handle)
 {
   AUDIO_USB_CF_NodeTypeDef * cf;
  
@@ -314,7 +361,7 @@ static uint16_t  USB_AudioStreamingInputOutputGetMaxPacketLength(uint32_t node_h
 
   #if USE_USB_AUDIO_CLASS_10
     cf->usb_control_callbacks.GetStatus = USB_AudioStreamingFeatureUnitGetStatus;
-  #endif /*USE_USB_AUDIO_CLASS_10*/
+  #endif //USE_USB_AUDIO_CLASS_10
 
   cf->usb_control_callbacks.GetMute       = USB_AudioStreamingFeatureUnitGetMute;
   cf->usb_control_callbacks.SetMute       = USB_AudioStreamingFeatureUnitSetMute;
@@ -327,7 +374,7 @@ static uint16_t  USB_AudioStreamingInputOutputGetMaxPacketLength(uint32_t node_h
   cf->usb_control_callbacks.ResVolume     = audio_defaults->res_volume;
   cf->node.audio_description              = audio_defaults->audio_description;
   
-  /* fill structure used by USB Audio Class module */
+  // fill structure used by USB Audio Class module 
   usb_control_feature->id                         = unit_id;
   usb_control_feature->control_req_map            = 0;  
   usb_control_feature->control_selector_map       = USBD_AUDIO_FU_MUTE_CONTROL|USBD_AUDIO_FU_VOLUME_CONTROL;
@@ -379,7 +426,7 @@ static int8_t USB_AudioStreamingFeatureUnitStart(AUDIO_USBFeatureUnitCommands_t*
   */
 static int8_t USB_AudioStreamingFeatureUnitStop( uint32_t node_handle)
 {
-  /* @TODO develop feature */
+  // @TODO develop feature 
   AUDIO_USB_CF_NodeTypeDef* control_feature;
   
   control_feature             = (AUDIO_USB_CF_NodeTypeDef*)node_handle;
@@ -396,7 +443,7 @@ static int8_t USB_AudioStreamingFeatureUnitStop( uint32_t node_handle)
   */
 static int8_t USB_AudioStreamingFeatureUnitGetMute(uint16_t channel, uint8_t* mute, uint32_t node_handle)
 {
-  /**@TODO add channel management  */
+  //*@TODO add channel management  
   *mute = ((AUDIO_USB_CF_NodeTypeDef*)node_handle)->node.audio_description->audio_mute; 
   return 0; 
 }
@@ -410,7 +457,7 @@ static int8_t USB_AudioStreamingFeatureUnitGetMute(uint16_t channel, uint8_t* mu
   */
 static int8_t USB_AudioStreamingFeatureUnitSetMute(uint16_t channel, uint8_t mute, uint32_t node_handle)
 {
-  /**@TODO add channel management  */
+  //*@TODO add channel management  
   AUDIO_USB_CF_NodeTypeDef* cf;
   
   cf                                     = (AUDIO_USB_CF_NodeTypeDef*)node_handle;
@@ -432,7 +479,7 @@ static int8_t USB_AudioStreamingFeatureUnitSetMute(uint16_t channel, uint8_t mut
   */
 static int8_t USB_AudioStreamingFeatureUnitGetCurVolume(uint16_t channel, uint16_t* volume, uint32_t node_handle)
 {
-  /**@TODO add channel management  */
+  //*@TODO add channel management  
   VOLUME_DB_256_TO_USB(*volume, ((AUDIO_Node_t*)node_handle)->audio_description->audio_volume_db_256);
   return 0; 
 }
@@ -449,7 +496,7 @@ static int8_t USB_AudioStreamingFeatureUnitSetCurVolume(uint16_t channel, uint16
   AUDIO_USB_CF_NodeTypeDef* cf;
   
   cf = (AUDIO_USB_CF_NodeTypeDef*)node_handle;
-  /**@TODO add channel management  */
+  //*@TODO add channel management  
   
   VOLUME_USB_TO_DB_256(cf->node.audio_description->audio_volume_db_256, volume);
 
@@ -470,7 +517,7 @@ static int8_t  USB_AudioStreamingFeatureUnitGetStatus(uint32_t node_handle)
 {
   return 0;
 }
-#endif /* USE_USB_AUDIO_CLASS_10 */
+#endif // USE_USB_AUDIO_CLASS_10 
 
 /**
   * @brief  The circular buffer has the total size of buffer_size. 

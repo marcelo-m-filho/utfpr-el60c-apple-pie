@@ -78,9 +78,9 @@ typedef struct
 {
   AUDIO_Node_t                              node;                   // generic node structure , must be first field 
   uint8_t                                   unit_id;                // UNIT ID for usb audio function description and control
-  USBD_AUDIO_FeatureControlCallbacksTypeDef usb_control_callbacks;  // list of callbacks 
+  USBD_AUDIO_FeatureControlCallbacks_t      usb_control_callbacks;  // list of callbacks 
   AUDIO_USBFeatureUnitCommands_t            control_cbks;
-  int8_t                                    (*CFInit)     (USBD_AUDIO_ControlTypeDef* /*control*/, AUDIO_USBFeatureUnitDefaults_t* /*audio_defaults*/, uint8_t /*unit_id*/, uint32_t /*node_handle*/);
+  int8_t                                    (*CFInit)     (USBD_AUDIO_Control_t* /*control*/, AUDIO_USBFeatureUnitDefaults_t* /*audio_defaults*/, uint8_t /*unit_id*/, uint32_t /*node_handle*/);
   int8_t                                    (*CFDeInit)   (uint32_t /*node_handle*/);
   int8_t                                    (*CFStart)    (AUDIO_USBFeatureUnitCommands_t* /* commands */, uint32_t /*node handle*/);
   int8_t                                    (*CFStop)     (uint32_t /*node handle*/);
@@ -93,14 +93,8 @@ AUDIO_USB_CF_NodeTypeDef;
 #define VOLUME_DB_256_TO_USB(v_usb, v_db) (v_usb) = (v_db >= 0)       ? v_db  : ((int)0xFFFF+v_db) +1   
 #define AUDIO_MAX_PACKET_WITH_FEEDBACK_LENGTH(audio_desc) AUDIO_USB_MAX_PACKET_SIZE((audio_desc)->frequency + 1, (audio_desc)->channels_count, (audio_desc)->resolution)
 
-int8_t  USB_AudioStreamingInputInit(USBD_AUDIO_EP_DataTypeDef* data_ep, AUDIO_Description_t* audio_desc, AUDIO_Session_t* session_handle,  uint32_t node_handle);
-
-int8_t USB_AudioStreamingFeatureUnitInit(USBD_AUDIO_ControlTypeDef* usb_control_feature, AUDIO_USBFeatureUnitDefaults_t* audio_defaults, uint8_t unit_id, uint32_t node_handle);
-void USB_AudioStreamingInitializeDataBuffer(AUDIO_CircularBuffer_t* buf, uint32_t buffer_size, uint16_t packet_size, uint16_t margin);
-
-
-
-// exported functions
-
+int8_t  USB_AudioStreamingInputInit(USBD_AUDIO_EP_Data_t* data_ep, AUDIO_Description_t* audio_desc, AUDIO_Session_t* session_handle,  uint32_t node_handle);
+int8_t  USB_AudioStreamingFeatureUnitInit(USBD_AUDIO_Control_t* usb_control_feature, AUDIO_USBFeatureUnitDefaults_t* audio_defaults, uint8_t unit_id, uint32_t node_handle);
+void    USB_AudioStreamingInitializeDataBuffer(AUDIO_CircularBuffer_t* buf, uint32_t buffer_size, uint16_t packet_size, uint16_t margin);
 
 #endif // __AUDIO_USB_NODES_H

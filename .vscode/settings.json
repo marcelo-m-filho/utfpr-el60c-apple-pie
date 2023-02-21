@@ -6,5 +6,20 @@
         "activityBar.background": "#451717",
         "titleBar.activeBackground": "#640f0f",
         "titleBar.activeForeground": "#FCF9F7"
+    },
+    "files.associations": {
+        "usbd_conf.h": "c",
+        "usbd_def.h": "c",
+        "stm32f7xx_hal.h": "c",
+        "usb_device.h": "c",
+        "usbd_core.h": "c",
+        "usbd_audio_if.h": "c",
+        "audio_sessions_usb.h": "c",
+        "usbd_audio.h": "c",
+        "usb_audio_app_config.h": "c",
+        "usbd_desc.h": "c",
+        "usbd_ioreq.h": "c",
+        "usbd_ctlreq.h": "c",
+        "audio_node.h": "c"
     }
 }
